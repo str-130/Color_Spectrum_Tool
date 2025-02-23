@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import colorchooser
 import colorsys
+import clipboard
 
 class ColorSpectrumGenerator:
     def __init__(self, master):
@@ -23,14 +24,41 @@ class ColorSpectrumGenerator:
         # 色阶数量滑块
         self.scale_label = tk.Label(self.master, text="色阶数量:")
         self.scale_label.pack()
-        self.num_steps_scale = tk.Scale(self.master, from_=3, to=20, orient=tk.HORIZONTAL,
-                                          command=self.update_num_steps, label="调整色阶")
-        self.num_steps_scale.set(self.num_steps)  # 设置初始值
-        self.num_steps_scale.pack()
+        self.num_steps_entry = tk.Entry(self.master)
+        self.num_steps_entry.pack()
+        self.num_steps_entry.insert(0, str(self.num_steps))  # 设置初始值
+        self.update_button = tk.Button(self.master, text="更新色阶", command=self.update_num_steps)
+        self.update_button.pack()
+
+        # h_change slider
+        self.h_change_label = tk.Label(self.master, text="色调变化:")
+        self.h_change_label.pack()
+        self.h_change_slider = tk.Scale(self.master, from_=0, to=0.2, orient=tk.HORIZONTAL, resolution=0.001, command=lambda x: self.update_colors())
+        self.h_change_slider.pack()
+        self.h_change_slider.set(0.01)
+        
+        # l_change slider
+        self.l_change_label = tk.Label(self.master, text="亮度变化:")
+        self.l_change_label.pack()
+        self.l_change_slider = tk.Scale(self.master, from_=0, to=0.2, orient=tk.HORIZONTAL, resolution=0.01, command=lambda x: self.update_colors())
+        self.l_change_slider.pack()
+        self.l_change_slider.set(0.05)
+
+
+        # s_change slider
+        self.s_change_label = tk.Label(self.master, text="饱满度变化:")
+        self.s_change_label.pack()
+        self.s_change_slider = tk.Scale(self.master, from_=0, to=0.2, orient=tk.HORIZONTAL, resolution=0.01, command=lambda x: self.update_colors())
+        self.s_change_slider.pack()
+        self.s_change_slider.set(0.05)
 
         # 颜色预览区域 (使用 Frame 容纳颜色块)
         self.color_frame = tk.Frame(self.master)
         self.color_frame.pack(pady=10)
+
+        # 反色预览区域
+        self.color_frame_inverted = tk.Frame(self.master)
+        self.color_frame_inverted.pack(pady=10)
 
     def choose_color(self):
         """打开颜色选择器并更新中间色"""
@@ -39,9 +67,13 @@ class ColorSpectrumGenerator:
             self.central_color = tuple(c / 255 for c in color_code[0])  # 转换为 RGB (0-1)
             self.update_colors()
 
-    def update_num_steps(self, value):
+    def update_num_steps(self):
         """更新色阶数量并重新生成颜色"""
-        self.num_steps = int(value)
+        try:
+            self.num_steps = int(self.num_steps_entry.get())
+        except ValueError:
+            print("Invalid input. Please enter an integer.")
+            return
         self.update_colors()
 
     def update_colors(self):
@@ -56,11 +88,29 @@ class ColorSpectrumGenerator:
         colors = self.generate_spectrum(self.central_color, self.num_steps)
 
         # 创建新的颜色块
-        for color in colors:
+        colors = self.generate_spectrum(self.central_color, self.num_steps)
+        normal_colors = colors[:len(colors)//2]
+        inverted_colors = colors[len(colors)//2:]
+
+        for color in normal_colors:
             hex_color = self.rgb_to_hex(color)
-            color_block = tk.Frame(self.color_frame, bg=hex_color, width=50, height=50, relief=tk.RAISED, borderwidth=1)
+            color_block = tk.Frame(self.color_frame, bg=hex_color, width=50, height=50, relief=tk.RAISED, borderwidth=1, cursor="hand2")
             color_block.pack(side=tk.LEFT, padx=2) #使用pack布局，padx添加颜色之间的间隔
+            color_block.bind("<Button-1>", lambda event, color=hex_color, block=color_block: self.copy_color(color, block))
             self.color_blocks.append(color_block)
+
+        for color in inverted_colors:
+            hex_color = self.rgb_to_hex(color)
+            color_block = tk.Frame(self.color_frame_inverted, bg=hex_color, width=50, height=50, relief=tk.RAISED, borderwidth=1, cursor="hand2")
+            color_block.pack(side=tk.LEFT, padx=2) #使用pack布局，padx添加颜色之间的间隔
+            color_block.bind("<Button-1>", lambda event, color=hex_color, block=color_block: self.copy_color(color, block))
+            self.color_blocks.append(color_block)
+
+    def copy_color(self, color, block):
+        """将颜色复制到剪贴板"""
+        clipboard.copy(color)
+        block.config(borderwidth=3)
+        block.after(100, lambda: block.config(borderwidth=1))
 
     def generate_spectrum(self, central_color, num_steps):
         """生成颜色频谱
@@ -73,19 +123,26 @@ class ColorSpectrumGenerator:
             颜色列表 (RGB, 0-1)
         """
 
-        if num_steps % 2 == 0:  # 如果num_steps是偶数，增加1，以确保中心颜色位于正中间
-            num_steps += 1
+        # if num_steps % 2 == 0:  # 如果num_steps是偶数，增加1，以确保中心颜色位于正中间
+        #     num_steps += 1
 
         # 转换为 HSL
-        h, s, l = colorsys.rgb_to_hls(*central_color)
+        h, l, s = colorsys.rgb_to_hls(*central_color)
+        l_change = self.l_change_slider.get()  # Lightness变化量
+        h_change = self.h_change_slider.get()  # Hue变化量
+        s_change = self.s_change_slider.get()  # Saturation变化量
 
+        # 调整中心颜色的Lightness和Saturation
         colors = []
         half_steps = num_steps // 2
 
         # 生成更暗的颜色
         for i in range(half_steps, 0, -1):
-            lightness = max(0, l - (l / (half_steps + 1)) * i)  # Lightness减小
-            r, g, b = colorsys.hls_to_rgb(h, lightness, s)
+            lightness = max(0, l - (l_change * i))  # Lightness减小
+            saturation = max(0, s - (s_change * i))  # Saturation减小
+            hue = (h - (h_change * i)) % 1  # Hue减小
+            # print(hue,lightness,saturation)
+            r, g, b = colorsys.hls_to_rgb(hue, lightness, saturation)
             colors.append((r, g, b))
 
         # 添加中心颜色
@@ -93,15 +150,17 @@ class ColorSpectrumGenerator:
 
         # 生成更亮的颜色
         for i in range(1, half_steps + 1):
-            lightness = min(1, l + ((1 - l) / (half_steps + 1)) * i)  # Lightness增加
-            r, g, b = colorsys.hls_to_rgb(h, lightness, s)
+            lightness = min(l +  (l_change * i), 1 )  # Lightness增大
+            saturation = min(s + (s_change * i), 1)  # Saturation增大
+            hue = (h + (h_change * i)) % 1  # Hue增大
+            r, g, b = colorsys.hls_to_rgb(hue, lightness, saturation)
             colors.append((r, g, b))
 
         # 生成反色
         inverted_colors = []
         inverted_hue = (h + 0.5) % 1  # 反色的 Hue
         for r, g, b in colors:
-            h, s, l = colorsys.rgb_to_hls(r,g,b)
+            h, l, s = colorsys.rgb_to_hls(r,g,b)
             r, g, b = colorsys.hls_to_rgb(inverted_hue, l, s)
             inverted_colors.append((r, g, b))
 
