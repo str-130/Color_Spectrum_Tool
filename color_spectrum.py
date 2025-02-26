@@ -2,35 +2,15 @@ import tkinter as tk
 import colorsys
 import clipboard
 import tkcolorpicker as tkcp
-import os
-import sys
 
-# def get_resource_path(relative_path):
-#     # 获取资源文件的绝对路径
-#     if hasattr(sys, '_MEIPASS'):
-#         # PyInstaller 打包后的路径
-#         base_path = sys._MEIPASS
-#         return os.path.join(base_path, relative_path)
-#     return os.path.join(os.path.abspath("."), relative_path)
 
-# image_path = get_resource_path("./frost.png")  # 假设 image1.png 在 "images" 目录下
-
-# def verify_resource():
-#     try:
-#         image_path = get_resource_path('./frost.png')
-#         print(f"Resource path: {image_path}")
-#         print(f"Resource exists: {os.path.exists(image_path)}")
-#         return True
-#     except Exception as e:
-#         print(f"Error accessing resource: {e}")
-#         return False
-    
 class ColorSpectrumGenerator:
     """
     颜色频谱生成器类，用于创建一个GUI界面，允许用户选择一个中心颜色，
     然后生成一个基于该中心颜色的颜色频谱。用户可以通过调整色阶数量、
     色调变化、亮度变化和饱和度变化来定制颜色频谱。
     """
+
     def __init__(self, master):
         """
         初始化颜色频谱生成器。
@@ -44,20 +24,20 @@ class ColorSpectrumGenerator:
         master.minsize(800, 400)
 
         # 为行和列设置权重，使其居中
-        master.grid_rowconfigure(0, weight=1)        # 顶部空白
-        master.grid_columnconfigure(0, weight=1)     # 左侧空白
-        master.grid_rowconfigure(8, weight=1)        # 底部空白 (假设总共有 7 行内容)
-        master.grid_columnconfigure(0, weight=1)     # 右侧空白 （假设总共有 3 列内容）
+        master.grid_rowconfigure(0, weight=1)  # 顶部空白
+        master.grid_columnconfigure(0, weight=1)  # 左侧空白
+        master.grid_rowconfigure(8, weight=1)  # 底部空白 (假设总共有 7 行内容)
+        master.grid_columnconfigure(0, weight=1)  # 右侧空白 （假设总共有 3 列内容）
 
         # 设置列的最小宽度和权重（内容列）
-        master.grid_columnconfigure(0, minsize=100, weight=0) # 标签列
-        master.grid_columnconfigure(1, minsize=200, weight=0) # 主体内容列 (输入框/滑块)        
-        master.grid_columnconfigure(2, minsize=200, weight=0) # 主体内容列 (输入框/滑块)    
-        master.grid_columnconfigure(3, minsize=300, weight=0) # 主体内容列 (输入框/滑块)    
+        master.grid_columnconfigure(0, minsize=100, weight=0)  # 标签列
+        master.grid_columnconfigure(1, minsize=200, weight=0)  # 主体内容列 (输入框/滑块)
+        master.grid_columnconfigure(2, minsize=200, weight=0)  # 主体内容列 (输入框/滑块)
+        master.grid_columnconfigure(3, minsize=300, weight=0)  # 主体内容列 (输入框/滑块)
 
-        default_color = (240,138,93)
+        default_color = (240, 138, 93)
 
-        self.central_color = tuple(c / 255.0 for c in default_color)  # 初始中间色 (RGB)
+        self.central_color = tuple(c / 255.0 for c in default_color)  # 初始中间色 (RGB), 归一化到0-1范围
         self.num_steps = 8  # 初始色阶数量
         self.color_blocks = []  # 存储颜色块的列表
 
@@ -81,14 +61,14 @@ class ColorSpectrumGenerator:
 
         # 第一行：颜色选择器
         self.color_button = tk.Button(self.master, text="选择中间色", command=self.choose_color)
-        self.color_button.grid(row=2, column=3, columnspan=1, pady=10,sticky="w")
+        self.color_button.grid(row=2, column=3, columnspan=1, pady=10, sticky="w")
 
         # 添加当前色块
         self.current_color_block = tk.Frame(
-            self.master, 
-            width=50, 
-            height=50, 
-            relief=tk.RAISED, 
+            self.master,
+            width=50,
+            height=50,
+            relief=tk.RAISED,
             borderwidth=1
         )
         self.current_color_block.grid(row=2, column=3, pady=10, padx=(100, 0), sticky="w")
@@ -98,7 +78,7 @@ class ColorSpectrumGenerator:
         # 设置初始颜色
         initial_color = self.rgb_to_hex(self.central_color)
         self.current_color_block.configure(bg=initial_color)
-        
+
         # 第三行：色调, 亮度, 饱和度调整
         self.h_change_label = tk.Label(self.master, text="色调变化:")
         self.h_change_label.grid(row=3, column=1, sticky="w")
@@ -134,8 +114,6 @@ class ColorSpectrumGenerator:
         # 第五行：反色预览区域
         self.color_frame_inverted = tk.Frame(self.master)
         self.color_frame_inverted.grid(row=7, column=0, columnspan=4, pady=10)
-
-
 
     def choose_color(self):
         """
@@ -175,21 +153,27 @@ class ColorSpectrumGenerator:
 
         # 创建新的颜色块
         colors = self.generate_spectrum(self.central_color, self.num_steps)
-        normal_colors = colors[:len(colors)//2]
-        inverted_colors = colors[len(colors)//2:]
+        normal_colors = colors[:len(colors) // 2]
+        inverted_colors = colors[len(colors) // 2:]
 
+        # 创建正色颜色块
         for color in normal_colors:
             hex_color = self.rgb_to_hex(color)
-            color_block = tk.Frame(self.color_frame, bg=hex_color, width=40, height=40, relief=tk.RAISED, borderwidth=1, cursor="hand2")
-            color_block.pack(side=tk.LEFT, padx=2) #使用pack布局，padx添加颜色之间的间隔
-            color_block.bind("<Button-1>", lambda event, color=hex_color, block=color_block: self.copy_color(color, block))
+            color_block = tk.Frame(self.color_frame, bg=hex_color, width=40, height=40, relief=tk.RAISED,
+                                   borderwidth=1, cursor="hand2")
+            color_block.pack(side=tk.LEFT, padx=2)  # 使用pack布局，padx添加颜色之间的间隔
+            color_block.bind("<Button-1>",
+                            lambda event, color=hex_color, block=color_block: self.copy_color(color, block))
             self.color_blocks.append(color_block)
 
+        # 创建反色颜色块
         for color in inverted_colors:
             hex_color = self.rgb_to_hex(color)
-            color_block = tk.Frame(self.color_frame_inverted, bg=hex_color, width=40, height=40, relief=tk.RAISED, borderwidth=1, cursor="hand2")
-            color_block.pack(side=tk.LEFT, padx=2) #使用pack布局，padx添加颜色之间的间隔
-            color_block.bind("<Button-1>", lambda event, color=hex_color, block=color_block: self.copy_color(color, block))
+            color_block = tk.Frame(self.color_frame_inverted, bg=hex_color, width=40, height=40, relief=tk.RAISED,
+                                   borderwidth=1, cursor="hand2")
+            color_block.pack(side=tk.LEFT, padx=2)  # 使用pack布局，padx添加颜色之间的间隔
+            color_block.bind("<Button-1>",
+                            lambda event, color=hex_color, block=color_block: self.copy_color(color, block))
             self.color_blocks.append(color_block)
 
     def copy_color(self, color, block):
@@ -201,29 +185,26 @@ class ColorSpectrumGenerator:
             block: 颜色块 (Tkinter Frame)。
         """
         clipboard.copy(color)
-        block.config(borderwidth=3)
-        block.after(100, lambda: block.config(borderwidth=1))
+        block.config(borderwidth=3)  # 高亮显示被点击的色块
+        block.after(100, lambda: block.config(borderwidth=1))  # 100ms后恢复原样
 
     def generate_spectrum(self, central_color, num_steps):
         """
         生成颜色频谱。
-        
+
         Args:
             central_color: 中心颜色 (RGB, 0-1)。
             num_steps: 色阶数量 (必须是奇数，这样才有正中间的颜色)。
-        
+
         Returns:
             颜色列表 (RGB, 0-1)。
         """
 
-        # if num_steps % 2 == 0:  # 如果num_steps是偶数，增加1，以确保中心颜色位于正中间
-        #     num_steps += 1
-
         # 转换为 HSL
         h, l, s = colorsys.rgb_to_hls(*central_color)
         l_change = self.l_change_slider.get() / 100  # Lightness变化量
-        h_change = self.h_change_slider.get() / 360 # Hue变化量
-        s_change = self.s_change_slider.get() / 100 # Saturation变化量
+        h_change = self.h_change_slider.get() / 360  # Hue变化量
+        s_change = self.s_change_slider.get() / 100  # Saturation变化量
 
         # 调整中心颜色的Lightness和Saturation
         colors = []
@@ -231,9 +212,9 @@ class ColorSpectrumGenerator:
 
         # 生成更暗的颜色
         for i in range(half_steps, 0, -1):
-            lightness = max(0, l - (l_change * i))  # Lightness减小
-            saturation = min( s - (s_change * i),1)  # Saturation减小
-            hue = (h - (h_change * i)) % 1  # Hue减小
+            lightness = max(0, l - (l_change * i))  # Lightness减小, 最小为0
+            saturation = min(s - (s_change * i), 1)  # Saturation减小,最小为0
+            hue = (h - (h_change * i)) % 1  # Hue减小,保持在0-1之间
             # print(hue,lightness,saturation)
             r, g, b = colorsys.hls_to_rgb(hue, lightness, saturation)
             colors.append((r, g, b))
@@ -243,17 +224,17 @@ class ColorSpectrumGenerator:
 
         # 生成更亮的颜色
         for i in range(1, half_steps + 1):
-            lightness = min(l +  (l_change * i), 1 )  # Lightness增大
-            saturation = min(s - (s_change * i), 1)  # Saturation增大
-            hue = (h + (h_change * i)) % 1  # Hue增大
+            lightness = min(l + (l_change * i), 1)  # Lightness增大, 最大为1
+            saturation = min(s - (s_change * i), 1)  # Saturation增大,最大为1
+            hue = (h + (h_change * i)) % 1  # Hue增大，保持在0-1之间
             r, g, b = colorsys.hls_to_rgb(hue, lightness, saturation)
             colors.append((r, g, b))
 
         # 生成反色
         inverted_colors = []
         for r, g, b in colors:
-            h, l, s = colorsys.rgb_to_hls(r,g,b)
-            inverted_hue = (h + 0.5) % 1  # 反色的 Hue
+            h, l, s = colorsys.rgb_to_hls(r, g, b)
+            inverted_hue = (h + 0.5) % 1  # 反色的 Hue,在当前颜色的基础上加0.5
             r, g, b = colorsys.hls_to_rgb(inverted_hue, l, s)
             inverted_colors.append((r, g, b))
 
@@ -270,6 +251,7 @@ class ColorSpectrumGenerator:
             十六进制颜色代码 (string)。
         """
         return '#{:02x}{:02x}{:02x}'.format(int(rgb[0] * 255), int(rgb[1] * 255), int(rgb[2] * 255))
+
 
 # 创建主窗口并运行
 root = tk.Tk()
